@@ -1,0 +1,9 @@
+POST http://localhost:3000/product/purchase HTTP/1.1
+content-type: application/json
+token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwYXlsb2FkIjp7ImlkIjozLCJ1c2VybmFtZSI6InN0YWZmc2FuIiwibmFtZSI6IlN0YWZmIEt1biIsInJvbGUiOiJTdGFmZiIsInJvbGVfaWQiOjN9LCJpYXQiOjE2MjIxNzg4MTUsImV4cCI6MTYyMjM1MTYxNX0.marGzTNsPa3j3jHl_WZRmEwqisfeN-XJK2pLEaeEIrudQ5RQz09tJcl3vUVxyZuiMjExw47SsRBjk2UHYS9HSgy3mtP8wkE635ydb1KCudJKjkgM2e18Kz7UyW26QM7f9XM1RR6ALUJiW3ZGyUibCYz5Ccjk-G_Ora6P2q0Rzd2PyKjLlaO85tkip3pYFvTOc-sf9icPxnpg1VLWdbjHftySsXjbaeTzKoC_I9YxcLrMvNBeUABOeqHznVsMSriAJV9V8ssUPqhQJjIpiV2ZA0fNd1oN6LWn3CVoPyK9SBmYIgcxtKProiGJTHvzYGUrGvoYKDTZyaAF3R6H_AllSQ
+
+{
+  "item_id": 1,
+  "quantity": 13,
+  "note": "AN Toocool"
+}
