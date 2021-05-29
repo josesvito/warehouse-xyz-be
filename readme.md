@@ -1,3 +1,3 @@
-# DKSA
+# How to start
 
-VSCode IntelliCode
+cmd > node index.js
