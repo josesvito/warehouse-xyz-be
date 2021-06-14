@@ -3,8 +3,8 @@
 const response = require('./res');
 const connection = require('./conn');
 const handle = require('./utils')
-const axios = require('axios')
-const qs = require('querystring')
+// const axios = require('axios')
+// const qs = require('querystring')
 const bcrypt = require('bcryptjs')
 
 const login = (user, res) => {
@@ -71,6 +71,31 @@ exports.acceptProcurement = (req, res) => {
   }
 }
 
+exports.rejectProcurement = (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [1])
+  if (user) {
+    const query = "UPDATE procurement SET date_rejected=?, reason=? WHERE id=?"
+    connection.query(query, [new Date(), req.body.reason, req.params.id], (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else response.ok("Procurement proposal denied", res)
+    })
+  } else {
+    response.fail("Unauthorized", res)
+  }
+}
+
+exports.orderProcurement = (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [1])
+  if (user) {
+    const query = "UPDATE procurement SET date_ordered=? WHERE id=?"
+    connection.query(query, [new Date(), req.params.id], (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else response.ok("Procurement process started", res)
+    })
+  } else {
+    response.fail("Unauthorized", res)
+  }
+}
 exports.doneProcurement = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [3])
   if (user) {
@@ -84,13 +109,42 @@ exports.doneProcurement = (req, res) => {
   }
 }
 
+exports.dismissExpirement = (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [3])
+  if (user) {
+    const query = "UPDATE procurement SET is_dismissed=1 WHERE id=?"
+    connection.query(query, [req.params.id], (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else response.ok("Expirement dismissed", res)
+    })
+  } else {
+    response.fail("Unauthorized", res)
+  }
+}
+
+exports.returnProcurement = (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [3])
+  if (user) {
+    const query = "INSERT INTO returned (procurement_id, quantity, note) VALUES (?, ?, ?)"
+    connection.query(query, [req.params.id, req.body.quantity, req.body.reason], (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else response.ok("Procurement items returned", res)
+    })
+  } else {
+    response.fail("Unauthorized", res)
+  }
+}
+
 exports.getAllProcurement = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1, 2, 3])
   if (user) {
-    const query = "SELECT p.*, i.name AS item_name, i.vendor, c.id AS category_id, c.name AS category, u.name AS requestee, (SELECT name FROM user WHERE id = p.procured_by) AS procuror_name"
-    + " FROM procurement p JOIN item i ON p.item_id = i.id"
-    + " JOIN master_category c ON c.id = i.master_category_id"
-    + " JOIN user u ON p.requested_by = u.id WHERE p.date_proposal >= ? AND p.date_proposal <= ?"
+    const query = "SELECT p.*, i.name AS item_name, i.vendor, c.id AS category_id, c.name AS category, u.name AS requestee, (SELECT name FROM user WHERE id = p.procured_by) AS procuror_name, r.quantity AS return_amount, r.note AS return_note " +
+      "FROM procurement p JOIN item i ON p.item_id = i.id " +
+      "JOIN master_category c ON c.id = i.master_category_id " +
+      "JOIN user u ON p.requested_by = u.id " +
+      "LEFT JOIN returned r ON r.procurement_id = p.id " +
+      "WHERE p.date_proposal >= ? AND p.date_proposal <= ? " +
+      "ORDER BY p.id DESC"
     connection.query(query, [req.query.sdate, req.query.edate], (error, rows, fields) => {
       if (error) response.fail(error, res)
       else response.ok(rows, res)
@@ -101,7 +155,7 @@ exports.getAllProcurement = (req, res) => {
 }
 
 exports.addItem = (req, res) => {
-  const user = handle.routeAccess(req.headers.token, [1, 3])
+  const user = handle.routeAccess(req.headers.token, [1])
   if (user) {
     const query = "INSERT INTO item (name, master_category_id, vendor) VALUES (?, ?, ?)"
     connection.query(query, [req.body.name, req.body.category_id, req.body.vendor], (error, rows, fields) => {
@@ -168,7 +222,11 @@ exports.getAllItems = (req, res) => {
 
 const checkQuantity = async (date, id, resolve) => {
   if(!date) date = '2099-12-31'
-  let query = "SELECT SUM(p.quantity) AS quantity, i.id, i.name, i.vendor FROM procurement p JOIN item i ON i.id = p.item_id WHERE p.date_procured <= ? AND i.id = ? LIMIT 1"
+  let query = "SELECT SUM(p.quantity) AS quantity, SUM(r.quantity) AS return_amount, i.id, i.name, i.vendor " +
+    "FROM procurement p " +
+    "JOIN item i ON i.id = p.item_id " +
+    "LEFT JOIN returned r ON r.procurement_id = p.id " +
+    "WHERE p.date_procured <= ? AND i.id = ? LIMIT 1";
   const quantityProc = (await connection.promise().query(query, [date, id]))[0][0]
   query = "SELECT SUM(pu.quantity) AS quantity FROM purchase pu WHERE pu.date_purchase <= ? AND pu.item_id = ? LIMIT 1"
   const quantityPurchase = (await connection.promise().query(query, [date, id]))[0][0]
@@ -176,12 +234,12 @@ const checkQuantity = async (date, id, resolve) => {
     id: id,
     name: quantityProc.name,
     vendor: quantityProc.vendor,
-    quantity: quantityProc.quantity - quantityPurchase.quantity
+    quantity: quantityProc.quantity - quantityProc.return_amount - quantityPurchase.quantity
   })
 }
 
 exports.addPurchase = (req, res) => {
-  const user = handle.routeAccess(req.headers.token, [1])
+  const user = handle.routeAccess(req.headers.token, [3])
   if (user) {
     checkQuantity('', req.body.item_id, item => {
       if (item.quantity - req.body.quantity >= 0) {
@@ -198,7 +256,7 @@ exports.addPurchase = (req, res) => {
 }
 
 exports.getAllPurchase = (req, res) => {
-  const user = handle.routeAccess(req.headers.token, [1, 2, 3])
+  const user = handle.routeAccess(req.headers.token, [3])
   if (user) {
     const query = "SELECT pu.*, i.name, i.vendor, c.id AS cat_id, c.name AS cat_name, u.name AS handler_name FROM purchase pu JOIN item i ON i.id = pu.item_id JOIN master_category c ON c.id = i.master_category_id JOIN user u ON pu.handler_id = u.id WHERE pu.date_purchase >= ? AND pu.date_purchase <= ?"
     connection.query(query, [req.query.sdate, req.query.edate], (error, rows, fields) => {
@@ -211,7 +269,7 @@ exports.getAllPurchase = (req, res) => {
 }
 
 exports.addMasterCategory = (req, res) => {
-  const user = handle.routeAccess(req.headers.token, [1, 3])
+  const user = handle.routeAccess(req.headers.token, [1])
   if (user) {
     const query = "INSERT INTO master_category (name) VALUES (?)"
     connection.query(query, [req.body.name], (error, rows, fields) => {

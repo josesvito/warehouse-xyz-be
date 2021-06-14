@@ -85,11 +85,16 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`procurement` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `generated_id` VARCHAR(255) NULL,
   `quantity` INT NOT NULL,
   `date_proposal` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `date_accepted` TIMESTAMP NULL,
+  `date_rejected` TIMESTAMP NULL,
+  `reason` VARCHAR(255) NULL,
+  `date_ordered` TIMESTAMP NULL,
   `date_procured` TIMESTAMP NULL,
   `date_exp` TIMESTAMP NULL,
+  `is_dismissed` TINYINT(1) NOT NULL DEFAULT 0,
   `procured_by` INT UNSIGNED NULL,
   `note` VARCHAR(255) NULL,
   `requested_by` INT UNSIGNED NOT NULL,
@@ -158,6 +163,24 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`purchase` (
 ENGINE = InnoDB;
 
 
+-- -----------------------------------------------------
+-- Table `warehouse_xyz_db`.`returned`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`returned` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `procurement_id` INT UNSIGNED NOT NULL,
+  `quantity` INT UNSIGNED NOT NULL,
+  `note` VARCHAR(255) NULL,
+  PRIMARY KEY (`id`),
+  INDEX `fk_returned_procurement1_idx` (`procurement_id` ASC),
+  CONSTRAINT `fk_returned_procurement1`
+    FOREIGN KEY (`procurement_id`)
+    REFERENCES `warehouse_xyz_db`.`procurement` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
@@ -217,10 +240,10 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `warehouse_xyz_db`;
-INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `quantity`, `date_proposal`, `date_accepted`, `date_procured`, `date_exp`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (1, 10, '2021-05-27', '2021-05-27', '2021-05-27', '2022-05-26', 3, 'Tolong restock item ini', 2, 1);
-INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `quantity`, `date_proposal`, `date_accepted`, `date_procured`, `date_exp`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (2, 9, '2021-05-28', '2021-05-28', '2021-05-28', '2022-05-27', 3, 'Untuk tourist', 2, 2);
-INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `quantity`, `date_proposal`, `date_accepted`, `date_procured`, `date_exp`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (3, 3, '2021-05-28', '2021-05-28', '2021-05-28', '2022-05-27', 3, NULL, 2, 4);
-INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `quantity`, `date_proposal`, `date_accepted`, `date_procured`, `date_exp`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (4, 7, '2021-05-28', '2021-05-28', '2021-05-28', '2021-05-30', 3, NULL, 2, 3);
+INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (1, NULL, 10, '2021-05-27', '2021-05-27', NULL, NULL, '2021-05-27', '2021-05-27', '2022-05-26', 0, 3, 'Tolong restock item ini', 2, 1);
+INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (2, NULL, 9, '2021-05-28', '2021-05-28', NULL, NULL, '2021-05-28', '2021-05-28', '2022-05-27', 0, 3, 'Untuk tourist', 2, 2);
+INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (3, NULL, 3, '2021-05-28', '2021-05-28', NULL, NULL, '2021-05-28', '2021-05-28', '2022-05-27', 0, 3, NULL, 2, 4);
+INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`) VALUES (4, NULL, 7, '2021-05-28', '2021-05-28', NULL, NULL, '2021-05-28', '2021-05-28', '2021-06-18', 0, 3, NULL, 2, 3);
 
 COMMIT;
 
@@ -234,6 +257,16 @@ INSERT INTO `warehouse_xyz_db`.`purchase` (`id`, `item_id`, `date_purchase`, `qu
 INSERT INTO `warehouse_xyz_db`.`purchase` (`id`, `item_id`, `date_purchase`, `quantity`, `note`, `handler_id`) VALUES (2, 2, '2021-05-28', 2, 'AN Ibu Em Yeu Anh', 1);
 INSERT INTO `warehouse_xyz_db`.`purchase` (`id`, `item_id`, `date_purchase`, `quantity`, `note`, `handler_id`) VALUES (3, 4, '2021-05-28', 1, 'Neighbor', 1);
 INSERT INTO `warehouse_xyz_db`.`purchase` (`id`, `item_id`, `date_purchase`, `quantity`, `note`, `handler_id`) VALUES (4, 3, '2021-05-28', 2, 'AN Ms. Elly', 1);
+
+COMMIT;
+
+
+-- -----------------------------------------------------
+-- Data for table `warehouse_xyz_db`.`returned`
+-- -----------------------------------------------------
+START TRANSACTION;
+USE `warehouse_xyz_db`;
+INSERT INTO `warehouse_xyz_db`.`returned` (`id`, `procurement_id`, `quantity`, `note`) VALUES (1, 1, 1, 'Cacat');
 
 COMMIT;
 

@@ -29,7 +29,15 @@ module.exports = function(app) {
 
   app.patch('/product/procurement/:id/acc', todoList.acceptProcurement)
 
+  app.patch('/product/procurement/:id/dec', todoList.rejectProcurement)
+
+  app.patch('/product/procurement/:id/order', todoList.orderProcurement)
+
   app.patch('/product/procurement/:id/done', todoList.doneProcurement)
+
+  app.patch('/product/procurement/:id/dis', todoList.dismissExpirement)
+
+  app.post('/product/procurement/:id', todoList.returnProcurement)
 
   app.get('/product/purchase', todoList.getAllPurchase)
 
