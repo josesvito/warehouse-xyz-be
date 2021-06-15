@@ -48,8 +48,8 @@ exports.logout = (req, res) => {
 exports.addProcurement = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [2])
   if (user) {
-    const query = "INSERT INTO procurement (quantity, note, item_id, requested_by) VALUES(?, ?, ?, ?)"
-    connection.query(query, [req.body.quantity, req.body.note, req.body.item_id, user.id], (error, rows, fields) => {
+    const query = "INSERT INTO procurement (generated_id, quantity, note, item_id, requested_by) VALUES(?, ?, ?, ?, ?)"
+    connection.query(query, [req.body.generated_id, req.body.quantity, req.body.note, req.body.item_id, user.id], (error, rows, fields) => {
       if (error) response.fail(error, res)
       else response.ok("Procurement success", res)
     })
