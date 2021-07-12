@@ -138,9 +138,10 @@ exports.returnProcurement = (req, res) => {
 exports.getAllProcurement = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1, 2, 3])
   if (user) {
-    const query = "SELECT p.*, i.name AS item_name, i.vendor, c.id AS category_id, c.name AS category, u.name AS requestee, (SELECT name FROM user WHERE id = p.procured_by) AS procuror_name, r.quantity AS return_amount, r.note AS return_note " +
+    const query = "SELECT p.*, i.name AS item_name, i.vendor, c.id AS category_id, c.name AS category, u.name AS requestee, (SELECT name FROM user WHERE id = p.procured_by) AS procuror_name, r.quantity AS return_amount, r.note AS return_note, i.master_unit_id AS unit_id, un.name AS unit_type " +
       "FROM procurement p JOIN item i ON p.item_id = i.id " +
       "JOIN master_category c ON c.id = i.master_category_id " +
+      "JOIN master_unit un ON un.id = i.master_unit_id " +
       "JOIN user u ON p.requested_by = u.id " +
       "LEFT JOIN returned r ON r.procurement_id = p.id " +
       "WHERE p.date_proposal >= ? AND p.date_proposal <= ? " +
@@ -157,8 +158,8 @@ exports.getAllProcurement = (req, res) => {
 exports.addItem = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1])
   if (user) {
-    const query = "INSERT INTO item (name, master_category_id, vendor) VALUES (?, ?, ?)"
-    connection.query(query, [req.body.name, req.body.category_id, req.body.vendor], (error, rows, fields) => {
+    const query = "INSERT INTO item (name, master_category_id, master_unit_id, vendor) VALUES (?, ?, ?, ?)"
+    connection.query(query, [req.body.name, req.body.category_id, req.body.unit_id, req.body.vendor], (error, rows, fields) => {
       if (error) response.fail(error, res)
       else response.ok("Added new item", res)
     })
@@ -170,8 +171,8 @@ exports.addItem = (req, res) => {
 exports.updateItem = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1])
   if (user) {
-    const query = "UPDATE item SET name=?, master_category_id=?, vendor=? WHERE id=?"
-    connection.query(query, [req.body.name, req.body.master_category_id, req.body.vendor, req.params.id], (error, rows, fields) => {
+    const query = "UPDATE item SET name=?, master_category_id=?, master_unit_id=?, vendor=? WHERE id=?"
+    connection.query(query, [req.body.name, req.body.master_category_id, req.body.master_unit_id, req.body.vendor, req.params.id], (error, rows, fields) => {
       if (error) response.fail(error, res)
       else response.ok("Item info updated", res)
     })
@@ -196,7 +197,7 @@ exports.deleteItem = (req, res) => {
 exports.getAllItems = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1, 2, 3])
   if (user) {
-    const query = "SELECT i.*, c.name AS category_name FROM item i JOIN master_category c ON c.id = i.master_category_id"
+    const query = "SELECT i.*, c.name AS category_name, u.name AS unit_name FROM item i JOIN master_category c ON c.id = i.master_category_id JOIN master_unit u ON u.id = i.master_unit_id"
     connection.query(query, (error, rows, fields) => {
       if (error) response.fail(error, res)
       else {
@@ -208,6 +209,10 @@ exports.getAllItems = (req, res) => {
             item.category = {
               id: rows.find(el => el.id == item.id).master_category_id,
               name: rows.find(el => el.id == item.id).category_name
+            }
+            item.unit = {
+              id: rows.find(el => el.id == item.id).master_unit_id,
+              name: rows.find(el => el.id == item.id).unit_name,
             }
             items.push(item)
             if(items.length == rows.length) response.ok(items, res)
@@ -222,19 +227,21 @@ exports.getAllItems = (req, res) => {
 
 const checkQuantity = async (date, id, resolve) => {
   if(!date) date = '2099-12-31'
-  let query = "SELECT SUM(p.quantity) AS quantity, SUM(r.quantity) AS return_amount, i.id, i.name, i.vendor " +
+  let query = "SELECT SUM(p.quantity) AS quantity, SUM(r.quantity) AS return_amount, SUM(p.quantity_out) AS quantity_out, i.id, i.name, i.vendor " +
     "FROM procurement p " +
     "JOIN item i ON i.id = p.item_id " +
     "LEFT JOIN returned r ON r.procurement_id = p.id " +
     "WHERE p.date_procured <= ? AND i.id = ? LIMIT 1";
   const quantityProc = (await connection.promise().query(query, [date, id]))[0][0]
-  query = "SELECT SUM(pu.quantity) AS quantity FROM purchase pu WHERE pu.date_purchase <= ? AND pu.item_id = ? LIMIT 1"
-  const quantityPurchase = (await connection.promise().query(query, [date, id]))[0][0]
+  query = "SELECT * FROM procurement p WHERE item_id=? ORDER BY date_exp ASC"
+  let firstExp = (await connection.promise().query(query, [id]))[0]
+  firstExp = firstExp.filter(el => el.quantity - (el.quantity_out || 0) > 0)
   resolve({
     id: id,
     name: quantityProc.name,
     vendor: quantityProc.vendor,
-    quantity: quantityProc.quantity - quantityProc.return_amount - quantityPurchase.quantity
+    quantity: quantityProc.quantity - quantityProc.return_amount - quantityProc.quantity_out,
+    hasExpiring: firstExp
   })
 }
 
@@ -243,12 +250,29 @@ exports.addPurchase = (req, res) => {
   if (user) {
     checkQuantity('', req.body.item_id, item => {
       if (item.quantity - req.body.quantity >= 0) {
+        let reqQty = req.body.quantity
+        for(let i = 0; i < item.hasExpiring.length; i++) {
+          const qtyOut = parseFloat((item.hasExpiring[i].quantity_out || 0) + reqQty)
+          console.log("current proc", item.hasExpiring[i].quantity_out)
+          const query = "UPDATE procurement SET quantity_out=? WHERE id=?"
+          if(qtyOut <= item.hasExpiring[i].quantity) {
+            console.log("qty out", qtyOut)
+            connection.query(query, [qtyOut, item.hasExpiring[i].id])
+            break
+          } else {
+            console.log("qty max reached", item.hasExpiring[i].quantity)
+            connection.query(query, [item.hasExpiring[i].quantity, item.hasExpiring[i].id])
+            reqQty -= parseFloat(item.hasExpiring[i].quantity - item.hasExpiring[i].quantity_out)
+          }
+        }
         const query = "INSERT INTO purchase (item_id, quantity, note, handler_id) VALUES (?, ?, ?, ?)"
         connection.query(query, [req.body.item_id, req.body.quantity, req.body.note, user.id], (error, rows, fields) => {
           if (error) response.fail(error, res)
           else response.ok("Purchase data added", res)
         })
-      } else response.fail("Insufficient quantity", res)
+      } else {
+        response.fail("Insufficient quantity", res)
+      }
     })
   } else {
     response.fail("Unauthorized", res)
@@ -258,7 +282,7 @@ exports.addPurchase = (req, res) => {
 exports.getAllPurchase = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [3])
   if (user) {
-    const query = "SELECT pu.*, i.name, i.vendor, c.id AS cat_id, c.name AS cat_name, u.name AS handler_name FROM purchase pu JOIN item i ON i.id = pu.item_id JOIN master_category c ON c.id = i.master_category_id JOIN user u ON pu.handler_id = u.id WHERE pu.date_purchase >= ? AND pu.date_purchase <= ?"
+    const query = "SELECT pu.*, i.name, i.vendor, c.id AS cat_id, c.name AS cat_name, u.name AS handler_name, un.name AS unit_name FROM purchase pu JOIN item i ON i.id = pu.item_id JOIN master_category c ON c.id = i.master_category_id JOIN user u ON pu.handler_id = u.id JOIN master_unit un ON un.id = i.master_unit_id WHERE pu.date_purchase >= ? AND pu.date_purchase <= ?"
     connection.query(query, [req.query.sdate, req.query.edate], (error, rows, fields) => {
       if (error) response.fail(error, res)
       else response.ok(rows, res)
@@ -281,6 +305,25 @@ exports.addMasterCategory = (req, res) => {
 
 exports.getMasterCategory = (req, res) => {
   const query = "SELECT * FROM master_category"
+  connection.query(query, (error, rows, fields) => {
+    if (error) response.fail(error, res)
+    else response.ok(rows, res)
+  })
+}
+
+exports.addMasterUnit = (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [1])
+  if (user) {
+    const query = "INSERT INTO master_unit (name) VALUES (?)"
+    connection.query(query, [req.body.name], (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else response.ok("Added new unit", res)
+    })
+  } else response.fail("Unauthorized", res)
+}
+
+exports.getMasterUnit = (req, res) => {
+  const query = "SELECT * FROM master_unit"
   connection.query(query, (error, rows, fields) => {
     if (error) response.fail(error, res)
     else response.ok(rows, res)

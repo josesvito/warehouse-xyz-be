@@ -47,6 +47,10 @@ module.exports = function(app) {
 
   app.post('/master/item_category', todoList.addMasterCategory)
 
+  app.get('/master/item_unit', todoList.getMasterUnit)
+
+  app.post('/master/item_unit', todoList.addMasterUnit)
+
   app.get('/users/profile/:id', todoList.getUser)
 
   app.patch('/users/profile/:id', todoList.editUser)
