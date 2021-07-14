@@ -236,11 +236,14 @@ const checkQuantity = async (date, id, resolve) => {
   query = "SELECT * FROM procurement p WHERE item_id=? ORDER BY date_exp ASC"
   let firstExp = (await connection.promise().query(query, [id]))[0]
   firstExp = firstExp.filter(el => el.quantity - (el.quantity_out || 0) > 0)
+  query = "SELECT SUM(pu.quantity) AS quantity FROM purchase pu WHERE pu.date_purchase <= ? AND pu.item_id = ? LIMIT 1"
+  const quantityPurchase = (await connection.promise().query(query, [date, id]))[0][0]
   resolve({
     id: id,
     name: quantityProc.name,
     vendor: quantityProc.vendor,
     quantity: quantityProc.quantity - quantityProc.return_amount - quantityProc.quantity_out,
+    qty_by_date: quantityProc.quantity - quantityProc.return_amount - quantityPurchase.quantity,
     hasExpiring: firstExp
   })
 }
