@@ -356,7 +356,7 @@ exports.getUser = (req, res) => {
 
 exports.editUser = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1, 2, 3])
-  if (user.id == req.params.id) {
+  if (user.id == req.params.id || user.role_id == 1) {
     let query
     let params
     if (req.body.password) {
