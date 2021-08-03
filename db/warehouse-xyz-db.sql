@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`user` (
   `master_role_id` INT UNSIGNED NOT NULL,
   `id_npwp` VARCHAR(16) NULL,
   `last_login` TIMESTAMP NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   INDEX `fk_user_master_role_idx` (`master_role_id` ASC),
   UNIQUE INDEX `id_npwp_UNIQUE` (`id_npwp` ASC),
@@ -220,9 +221,9 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `warehouse_xyz_db`;
-INSERT INTO `warehouse_xyz_db`.`user` (`id`, `username`, `password`, `token`, `name`, `master_role_id`, `id_npwp`, `last_login`) VALUES (1, 'admin', '$2y$10$cMyENZ8jzm5xW0LJgbr2nO0gJVfBB1V6Q40SOZ6T.AhJUiVgQSShy', NULL, 'John Doe', 1, NULL, NULL);
-INSERT INTO `warehouse_xyz_db`.`user` (`id`, `username`, `password`, `token`, `name`, `master_role_id`, `id_npwp`, `last_login`) VALUES (2, 'accountant', '$2y$10$cMyENZ8jzm5xW0LJgbr2nO0gJVfBB1V6Q40SOZ6T.AhJUiVgQSShy', NULL, 'Mary Doe', 2, '3334441100004411', NULL);
-INSERT INTO `warehouse_xyz_db`.`user` (`id`, `username`, `password`, `token`, `name`, `master_role_id`, `id_npwp`, `last_login`) VALUES (3, 'staff', '$2y$10$cMyENZ8jzm5xW0LJgbr2nO0gJVfBB1V6Q40SOZ6T.AhJUiVgQSShy', NULL, 'Staff Kun', 3, '3334441100004412', NULL);
+INSERT INTO `warehouse_xyz_db`.`user` (`id`, `username`, `password`, `token`, `name`, `master_role_id`, `id_npwp`, `last_login`, `is_active`) VALUES (1, 'admin', '$2y$10$cMyENZ8jzm5xW0LJgbr2nO0gJVfBB1V6Q40SOZ6T.AhJUiVgQSShy', NULL, 'John Doe', 1, NULL, NULL, 1);
+INSERT INTO `warehouse_xyz_db`.`user` (`id`, `username`, `password`, `token`, `name`, `master_role_id`, `id_npwp`, `last_login`, `is_active`) VALUES (2, 'accountant', '$2y$10$cMyENZ8jzm5xW0LJgbr2nO0gJVfBB1V6Q40SOZ6T.AhJUiVgQSShy', NULL, 'Mary Doe', 2, '3334441100004411', NULL, 1);
+INSERT INTO `warehouse_xyz_db`.`user` (`id`, `username`, `password`, `token`, `name`, `master_role_id`, `id_npwp`, `last_login`, `is_active`) VALUES (3, 'staff', '$2y$10$cMyENZ8jzm5xW0LJgbr2nO0gJVfBB1V6Q40SOZ6T.AhJUiVgQSShy', NULL, 'Staff Kun', 3, '3334441100004412', NULL, 1);
 
 COMMIT;
 
