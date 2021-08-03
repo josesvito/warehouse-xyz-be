@@ -7,7 +7,7 @@ const handle = require('./utils')
 // const qs = require('querystring')
 const bcrypt = require('bcryptjs')
 
-const login = (user, res) => {
+const login = (user) => {
   const query = "UPDATE user SET last_login=?, token=? WHERE id=?"
   connection.query(query, [new Date(), user.token, user.id])
 }
@@ -27,10 +27,12 @@ exports.login = (req, res) => {
           id_npwp: rows[0].id_npwp,
           role: rows[0].role,
           role_id: rows[0].master_role_id,
+          is_active: rows[0].is_active,
         }
-        user.token = handle.jwtSign(user)
-        login(user, res)
-        response.ok(user, res)
+        user.token = user.is_active ? handle.jwtSign(user) : null
+        login(user)
+        if(user.token) response.ok(user, res)
+        else response.fail('Account has been deactivated', res)
       } else response.fail('Wrong username/password', res)
     }
   })
@@ -295,6 +297,27 @@ exports.getAllPurchase = (req, res) => {
   }
 }
 
+exports.getAllReturnedItems = (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [1, 2, 3])
+  if (user) {
+    const query = "SELECT p.*, i.name AS item_name, i.vendor, c.id AS category_id, c.name AS category, u.name AS requestee, (SELECT name FROM user WHERE id = p.procured_by) AS procuror_name, r.quantity AS return_amount, r.note AS return_note, i.master_unit_id AS unit_id, un.name AS unit_type " +
+      "FROM procurement p JOIN item i ON p.item_id = i.id " +
+      "JOIN master_category c ON c.id = i.master_category_id " +
+      "JOIN master_unit un ON un.id = i.master_unit_id " +
+      "JOIN user u ON p.requested_by = u.id " +
+      "LEFT JOIN returned r ON r.procurement_id = p.id " +
+      "WHERE p.date_proposal >= ? AND p.date_proposal <= ? " +
+      "AND r.quantity IS NOT NULL"
+      "ORDER BY p.id DESC"
+    connection.query(query, [req.query.sdate, req.query.edate], (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else response.ok(rows, res)
+    })
+  } else {
+    response.fail("Unauthorized", res)
+  }
+}
+
 exports.addMasterCategory = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1])
   if (user) {
@@ -376,6 +399,21 @@ exports.editUser = (req, res) => {
   }
 }
 
+exports.activateUser = async (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [1])
+  if (user.role_id == 1) {
+    const selectedUser = await new Promise(resolve => connection.query("SELECT is_active FROM user WHERE id=? LIMIT 1", [req.params.id], (error, rows, fields) => resolve(error ? error : rows)))
+    const activateUser = selectedUser[0].is_active == 1 ? 0 : 1
+    const query = `UPDATE user SET is_active=${activateUser} WHERE id=${req.params.id}` 
+    connection.query(query, (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else response.ok(activateUser == 1 ? "Success activate account" : "Account deactivated", res)
+    })
+  } else {
+    response.fail("Unauthorized", res)
+  }
+}
+
 exports.getUserLog = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1, 2, 3])
   if (user.id == req.params.id || user.role_id == 1) {
@@ -392,7 +430,7 @@ exports.getUserLog = (req, res) => {
 exports.getAllUser = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1]) 
   if (user){
-    const query = "SELECT u.id, u.username, u.name, u.id_npwp, u.master_role_id, r.name AS role FROM user u JOIN master_role r ON u.master_role_id = r.id"
+    const query = "SELECT u.id, u.username, u.name, u.id_npwp, u.master_role_id, u.is_active, r.name AS role FROM user u JOIN master_role r ON u.master_role_id = r.id"
     connection.query(query, (error, rows, fields) => {
       if (error) response.fail(error, res)
       else response.ok(rows, res)

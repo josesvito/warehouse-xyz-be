@@ -41,6 +41,8 @@ module.exports = function(app) {
 
   app.get('/product/purchase', todoList.getAllPurchase)
 
+  app.get('/product/returned', todoList.getAllReturnedItems)
+
   app.get('/master/role', () => {})
 
   app.get('/master/item_category', todoList.getMasterCategory)
@@ -54,6 +56,8 @@ module.exports = function(app) {
   app.get('/users/profile/:id', todoList.getUser)
 
   app.patch('/users/profile/:id', todoList.editUser)
+
+  app.put('/users/profile/:id', todoList.activateUser)
 
   app.get('/users/profile/:id/log', todoList.getUserLog)
 
