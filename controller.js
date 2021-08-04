@@ -298,7 +298,7 @@ exports.getAllPurchase = (req, res) => {
 }
 
 exports.getAllReturnedItems = (req, res) => {
-  const user = handle.routeAccess(req.headers.token, [1, 2, 3])
+  const user = handle.routeAccess(req.headers.token, [1, 3])
   if (user) {
     const query = "SELECT p.*, i.name AS item_name, i.vendor, c.id AS category_id, c.name AS category, u.name AS requestee, (SELECT name FROM user WHERE id = p.procured_by) AS procuror_name, r.quantity AS return_amount, r.note AS return_note, i.master_unit_id AS unit_id, un.name AS unit_type " +
       "FROM procurement p JOIN item i ON p.item_id = i.id " +
