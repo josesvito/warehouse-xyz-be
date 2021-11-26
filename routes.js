@@ -1,9 +1,7 @@
 'use strict';
 
 module.exports = function(app) {
-  const todoList = require('./controller'),
-    path = require('path'),
-    multer = require('multer')
+  const todoList = require('./controller')
 
   app.get('/', todoList.index)
 
@@ -12,6 +10,8 @@ module.exports = function(app) {
   app.post('/users/session/logout', todoList.logout)
 
   app.get('/users/list', todoList.getAllUser)
+
+  app.get('/product/dashboard', todoList.getDashboardChart)
 
   app.get('/product/list', todoList.getAllItems)
 

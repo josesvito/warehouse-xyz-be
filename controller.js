@@ -2,10 +2,9 @@
 
 const response = require('./res');
 const connection = require('./conn');
-const handle = require('./utils')
-// const axios = require('axios')
-// const qs = require('querystring')
-const bcrypt = require('bcryptjs')
+const handle = require('./utils');
+const bcrypt = require('bcryptjs');
+const moment = require('moment');
 
 const login = (user) => {
   const query = "UPDATE user SET last_login=?, token=? WHERE id=?"
@@ -45,6 +44,37 @@ exports.logout = (req, res) => {
     else if (rows.affectedRows > 0) response.ok("Logout Successful", res)
     else response.fail("Something went wrong", res)
   })
+}
+
+exports.getDashboardChart = (req, res) => {
+  const user = handle.routeAccess(req.headers.token, [1])
+  if (user) {
+    const query = "SELECT event_date, SUM(quantity_in) AS quantity_in, SUM(quantity_returned) AS quantity_returned, SUM(quantity_out) AS quantity_out, SUM(quantity_exp) AS quantity_exp FROM (SELECT p.date_procured AS event_date, SUM(p.quantity) AS quantity_in, SUM(r.quantity) AS quantity_returned, NULL AS quantity_out, SUM(IF(p.date_exp <= now(), p.quantity - IFNULL(p.quantity_out, 0), 0)) AS quantity_exp FROM procurement p LEFT JOIN returned r ON r.procurement_id = p.id WHERE p.date_procured >= date_sub(now(), interval 1 month) GROUP BY p.date_procured UNION SELECT pu.date_purchase, NULL, NULL, SUM(pu.quantity), NULL FROM purchase pu WHERE pu.date_purchase >= date_sub(now(), interval 1 month) GROUP BY pu.date_purchase) AS chart GROUP BY event_date ORDER BY event_date ASC";
+    connection.query(query, (error, rows, fields) => {
+      if (error) response.fail(error, res)
+      else {
+        const template = (date) => ({
+          event_date: date,
+          quantity_in: 0,
+          quantity_returned: 0,
+          quantity_out: 0,
+          quantity_exp: 0
+        })
+        rows.map(el => {
+          el.event_date = moment(String(el.event_date)).format("DD-MM-YY").toString()
+          for (const i in el) 
+            if (el[i] === null) el[i] = 0;
+          return el
+        })
+        rows = [...Array(30).keys()].map((i) => {
+          const xDaysPast = new Date().setDate(new Date().getDate() - (30 - (i + 1)))
+          const dateThen = moment(String(new Date(xDaysPast))).format("DD-MM-YY").toString()
+          return rows.find(el => el.event_date == dateThen) ?? template(dateThen)
+        })
+        response.ok(rows, res)
+      }
+    })
+  } else response.fail("Unauthorized", res)
 }
 
 exports.addProcurement = (req, res) => {
@@ -199,7 +229,7 @@ exports.deleteItem = (req, res) => {
 exports.getAllItems = (req, res) => {
   const user = handle.routeAccess(req.headers.token, [1, 2, 3])
   if (user) {
-    const query = "SELECT i.*, c.name AS category_name, u.name AS unit_name FROM item i JOIN master_category c ON c.id = i.master_category_id JOIN master_unit u ON u.id = i.master_unit_id"
+    const query = "SELECT i.*, c.name AS category_name, u.name AS unit_name FROM item i JOIN master_category c ON c.id = i.master_category_id JOIN master_unit u ON u.id = i.master_unit_id ORDER BY i.name"
     connection.query(query, (error, rows, fields) => {
       if (error) response.fail(error, res)
       else {

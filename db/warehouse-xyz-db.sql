@@ -2,7 +2,7 @@
 
 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
-SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
 -- -----------------------------------------------------
 -- Schema warehouse_xyz_db
@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`user` (
   `last_login` TIMESTAMP NULL,
   `is_active` TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
-  INDEX `fk_user_master_role_idx` (`master_role_id` ASC),
-  UNIQUE INDEX `id_npwp_UNIQUE` (`id_npwp` ASC),
-  UNIQUE INDEX `username_UNIQUE` (`username` ASC),
+  INDEX `fk_user_master_role_idx` (`master_role_id`),
+  UNIQUE INDEX `id_npwp_UNIQUE` (`id_npwp`),
+  UNIQUE INDEX `username_UNIQUE` (`username`),
   CONSTRAINT `fk_user_master_role`
     FOREIGN KEY (`master_role_id`)
     REFERENCES `warehouse_xyz_db`.`master_role` (`id`)
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`master_category` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC))
+  UNIQUE INDEX `name_UNIQUE` (`name`))
 ENGINE = InnoDB;
 
 
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`master_unit` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC))
+  UNIQUE INDEX `name_UNIQUE` (`name`))
 ENGINE = InnoDB;
 
 
@@ -83,8 +83,8 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`item` (
   `master_category_id` INT UNSIGNED NOT NULL,
   `master_unit_id` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
-  INDEX `fk_item_master_category1_idx` (`master_category_id` ASC),
-  INDEX `fk_item_master_unit21_idx` (`master_unit_id` ASC),
+  INDEX `fk_item_master_category1_idx` (`master_category_id`),
+  INDEX `fk_item_master_unit21_idx` (`master_unit_id`),
   CONSTRAINT `fk_item_master_category1`
     FOREIGN KEY (`master_category_id`)
     REFERENCES `warehouse_xyz_db`.`master_category` (`id`)
@@ -119,9 +119,9 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`procurement` (
   `item_id` INT UNSIGNED NOT NULL,
   `quantity_out` FLOAT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  INDEX `fk_procurement_user1_idx` (`requested_by` ASC),
-  INDEX `fk_procurement_item1_idx` (`item_id` ASC),
-  INDEX `fk_procurement_user2_idx` (`procured_by` ASC),
+  INDEX `fk_procurement_user1_idx` (`requested_by`),
+  INDEX `fk_procurement_item1_idx` (`item_id`),
+  INDEX `fk_procurement_user2_idx` (`procured_by`),
   CONSTRAINT `fk_procurement_user1`
     FOREIGN KEY (`requested_by`)
     REFERENCES `warehouse_xyz_db`.`user` (`id`)
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`log_history` (
   `user_id` INT UNSIGNED NOT NULL,
   `action` VARCHAR(255) NOT NULL,
   `time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `fk_log_history_user1_idx` (`user_id` ASC),
+  INDEX `fk_log_history_user1_idx` (`user_id`),
   CONSTRAINT `fk_log_history_user1`
     FOREIGN KEY (`user_id`)
     REFERENCES `warehouse_xyz_db`.`user` (`id`)
@@ -167,8 +167,8 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`purchase` (
   `note` VARCHAR(255) NULL,
   `handler_id` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
-  INDEX `fk_purchase_item1_idx` (`item_id` ASC),
-  INDEX `fk_purchase_user1_idx` (`handler_id` ASC),
+  INDEX `fk_purchase_item1_idx` (`item_id`),
+  INDEX `fk_purchase_user1_idx` (`handler_id`),
   CONSTRAINT `fk_purchase_item1`
     FOREIGN KEY (`item_id`)
     REFERENCES `warehouse_xyz_db`.`item` (`id`)
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS `warehouse_xyz_db`.`returned` (
   `quantity` FLOAT UNSIGNED NOT NULL,
   `note` VARCHAR(255) NULL,
   PRIMARY KEY (`id`),
-  INDEX `fk_returned_procurement1_idx` (`procurement_id` ASC),
+  INDEX `fk_returned_procurement1_idx` (`procurement_id`),
   CONSTRAINT `fk_returned_procurement1`
     FOREIGN KEY (`procurement_id`)
     REFERENCES `warehouse_xyz_db`.`procurement` (`id`)
@@ -233,10 +233,12 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `warehouse_xyz_db`;
-INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (1, 'Essentials');
-INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (2, 'Coffee');
-INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (3, 'Dessert');
+INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (1, 'Spices');
+INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (2, 'Beverages');
+INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (3, 'Light Meals');
 INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (4, 'Etc.');
+INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (5, 'Main Dish');
+INSERT INTO `warehouse_xyz_db`.`master_category` (`id`, `name`) VALUES (6, 'Appliances');
 
 COMMIT;
 
@@ -262,9 +264,12 @@ USE `warehouse_xyz_db`;
 INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (1, '2021-05-25', 'Gula', 'Nuxtcafe', 1, 1);
 INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (2, '2021-05-25', 'Gula', 'Nuxtcafe', 1, 2);
 INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (3, '2021-05-25', 'Kopi Espresso', NULL, 2, 1);
-INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (4, '2021-05-25', 'Borboun', 'Nestel', 4, 1);
-INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (5, '2021-05-25', 'Milk Grade A', 'Nestel', 1, 3);
+INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (4, '2021-05-25', 'Bourbon', 'Nestel', 4, 3);
+INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (5, '2021-05-25', 'Milk Grade A', 'Nestel', 2, 3);
 INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (6, '2021-06-15', 'Cheese Cake', 'Chaddar', 3, 4);
+INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (7, '2021-06-15', 'Blue Stove', 'Renai', 6, 4);
+INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (8, '2021-11-26', 'Beras Putih', 'Tiga Putri Jaya', 5, 1);
+INSERT INTO `warehouse_xyz_db`.`item` (`id`, `date_created`, `name`, `vendor`, `master_category_id`, `master_unit_id`) VALUES (9, '2021-11-25', 'Salt', 'NaCl', 1, 1);
 
 COMMIT;
 
@@ -274,12 +279,14 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `warehouse_xyz_db`;
-INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (1, NULL, 10, '2021-07-10', '2021-07-10', NULL, NULL, '2021-07-10', '2021-07-10', '2021-07-31', 0, 3, 'Tolong restock item ini', 2, 1, 1);
+INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (1, NULL, 10, '2021-07-10', '2021-07-10', NULL, NULL, '2021-07-10', '2021-07-10', '2021-12-05', 0, 3, 'Tolong restock item ini', 2, 1, 1);
 INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (2, NULL, 10, '2021-07-10', '2021-07-10', NULL, NULL, '2021-07-10', '2021-07-10', '2021-07-31', 0, 3, 'Untuk tourist', 2, 2, NULL);
 INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (3, NULL, 10, '2021-07-10', '2021-07-10', NULL, NULL, '2021-07-10', '2021-07-10', '2021-07-31', 0, 3, NULL, 2, 3, NULL);
 INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (4, NULL, 10, '2021-07-10', '2021-07-10', NULL, NULL, '2021-07-10', '2021-07-10', '2021-07-31', 0, 3, NULL, 2, 4, NULL);
 INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (5, NULL, 10, '2021-07-10', '2021-07-10', NULL, NULL, '2021-07-10', '2021-07-10', '2021-07-31', 0, 3, NULL, 2, 5, NULL);
 INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (6, NULL, 10, '2021-07-10', '2021-07-10', NULL, NULL, '2021-07-10', '2021-07-10', '2021-07-31', 0, 3, NULL, 2, 6, NULL);
+INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (7, NULL, 1, '2021-11-25', '2021-11-25', NULL, NULL, '2021-11-25', '2021-11-25', '2021-11-25', 0, 3, NULL, 2, 1, 1);
+INSERT INTO `warehouse_xyz_db`.`procurement` (`id`, `generated_id`, `quantity`, `date_proposal`, `date_accepted`, `date_rejected`, `reason`, `date_ordered`, `date_procured`, `date_exp`, `is_dismissed`, `procured_by`, `note`, `requested_by`, `item_id`, `quantity_out`) VALUES (8, NULL, 10, '2021-11-26', '2021-11-26', NULL, NULL, '2021-11-26', '2021-11-26', '2021-12-31', 0, 3, NULL, 2, 1, 1);
 
 COMMIT;
 
@@ -290,6 +297,7 @@ COMMIT;
 START TRANSACTION;
 USE `warehouse_xyz_db`;
 INSERT INTO `warehouse_xyz_db`.`purchase` (`id`, `item_id`, `date_purchase`, `quantity`, `note`, `handler_id`) VALUES (1, 1, '2021-07-10', 1, 'AN Ibu Em Yeu Anh', 1);
+INSERT INTO `warehouse_xyz_db`.`purchase` (`id`, `item_id`, `date_purchase`, `quantity`, `note`, `handler_id`) VALUES (2, 1, '2021-11-26', 2, 'AN Ibu Em Yeu Anh', 1);
 
 COMMIT;
 

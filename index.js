@@ -1,10 +1,9 @@
 const express = require('express'),
     app = express(),
     cors = require('cors'),
-    helmet = require('helmet')
+    helmet = require('helmet'),
     port = process.env.PORT || 3000,
-    bodyParser = require('body-parser'),
-    methodOverride = require('method-override');
+    bodyParser = require('body-parser')
 
 app.use(bodyParser.urlencoded({
     extended: true
@@ -14,8 +13,6 @@ app.use(bodyParser.json());
 app.use(cors())
 
 app.use(helmet())
-
-app.use(methodOverride(req => req.body._method))
 
 const routes = require('./routes');
 routes(app);
