@@ -315,16 +315,17 @@ exports.addPurchase = (req, res) => {
 }
 
 exports.getAllPurchase = (req, res) => {
-  const user = handle.routeAccess(req.headers.token, [3])
-  if (user) {
-    const query = "SELECT pu.*, i.name, i.vendor, c.id AS cat_id, c.name AS cat_name, u.name AS handler_name, un.name AS unit_name FROM purchase pu JOIN item i ON i.id = pu.item_id JOIN master_category c ON c.id = i.master_category_id JOIN user u ON pu.handler_id = u.id JOIN master_unit un ON un.id = i.master_unit_id WHERE pu.date_purchase >= ? AND pu.date_purchase <= ?"
-    connection.query(query, [req.query.sdate, req.query.edate], (error, rows, fields) => {
-      if (error) response.fail(error, res)
-      else response.ok(rows, res)
-    })
-  } else {
-    response.fail("Unauthorized", res)
-  }
+  const access = [3],
+    { admin } = req.query
+  if (admin == 'true') access.unshift(1)
+  const user = handle.routeAccess(req.headers.token, access)
+  if (!user) response.fail("Unauthorized", res)
+
+  const query = "SELECT pu.*, i.name, i.vendor, c.id AS cat_id, c.name AS cat_name, u.name AS handler_name, un.name AS unit_name FROM purchase pu JOIN item i ON i.id = pu.item_id JOIN master_category c ON c.id = i.master_category_id JOIN user u ON pu.handler_id = u.id JOIN master_unit un ON un.id = i.master_unit_id WHERE pu.date_purchase >= ? AND pu.date_purchase <= ?"
+  connection.query(query, [req.query.sdate, req.query.edate], (error, rows, fields) => {
+    if (error) response.fail(error, res)
+    else response.ok(rows, res)
+  })
 }
 
 exports.getAllReturnedItems = (req, res) => {
